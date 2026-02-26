@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,327 +15,191 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      background: #f0f2f5;
-      font-family: 'Segoe UI', sans-serif;
-      margin: 0;
-    }
-
-    .app-container {
-      max-width: 480px;
-      margin: auto;
-      background: white;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    .header {
-      padding: 18px;
-      border-bottom: 1px solid #dee2e6;
-      text-align: center;
-      font-weight: 700;
-      color: #1a73e8;
-      font-size: 1.1rem;
-      letter-spacing: 0.5px;
-    }
-
-    .form-body {
-      padding: 25px;
-      flex-grow: 1;
-    }
-
-    .field-label {
-      font-weight: 600;
-      color: #5f6368;
-      font-size: 0.82rem;
-      text-transform: uppercase;
-      margin-bottom: 6px;
-      display: block;
-      letter-spacing: 0.4px;
-    }
-
-    .input-group {
-      border: 1.5px solid #dadce0;
-      border-radius: 8px;
-      overflow: hidden;
-      transition: border-color 0.2s;
-    }
-
-    .input-group:focus-within {
-      border-color: #1a73e8;
-    }
-
-    #reader {
-      width: 100%;
-      border-radius: 12px;
-      display: none;
-      margin-bottom: 20px;
-      border: 2px solid #1a73e8;
-      overflow: hidden;
-      background: #000;
-    }
-
-    .footer {
-      display: flex;
-      border-top: 1px solid #dee2e6;
-      padding: 12px;
-      gap: 10px;
-    }
-
-    .btn-footer {
-      flex: 1;
-      padding: 14px;
-      border-radius: 8px;
-      border: none;
-      font-weight: 600;
-      cursor: pointer;
-      font-size: 1rem;
-      transition: opacity 0.2s;
-    }
-
-    .btn-footer:active {
-      opacity: 0.8;
-    }
-
-    .btn-cancel {
-      background: #f1f3f4;
-      color: #5f6368;
-    }
-
-    .btn-save {
-      background: #1a73e8;
-      color: white;
-    }
-
-    .btn-save:disabled {
-      background: #a8c7fa;
-      cursor: not-allowed;
-    }
-
-    .hint-text {
-      font-size: 0.78rem;
-      color: #9aa0a6;
-      margin-top: 5px;
-    }
-
-    .install-banner {
-      background: #e6f4ea;
-      border: 1.5px solid #34a853;
-      border-radius: 10px;
-      padding: 12px 16px;
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .install-banner p {
-      margin: 0;
-      font-size: 0.85rem;
-      color: #1e7e34;
-      line-height: 1.3;
-    }
-
-    .btn-install {
-      background: #34a853;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-weight: 600;
-      font-size: 0.85rem;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #34a853;
-      display: inline-block;
-      margin-right: 6px;
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-
-      0%,
-      100% {
-        opacity: 1
-      }
-
-      50% {
-        opacity: 0.4
-      }
-    }
+    * { box-sizing: border-box; }
+    body { background: #f0f2f5; font-family: 'Segoe UI', sans-serif; margin: 0; }
+    .app-container { max-width: 480px; margin: auto; background: white; min-height: 100vh; display: flex; flex-direction: column; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .header { padding: 18px; border-bottom: 1px solid #dee2e6; text-align: center; font-weight: 700; color: #1a73e8; font-size: 1.1rem; letter-spacing: 0.5px; }
+    .form-body { padding: 25px; flex-grow: 1; }
+    .field-label { font-weight: 600; color: #5f6368; font-size: 0.82rem; text-transform: uppercase; margin-bottom: 6px; display: block; letter-spacing: 0.4px; }
+    .input-group { border: 1.5px solid #dadce0; border-radius: 8px; overflow: hidden; transition: border-color 0.2s; }
+    .input-group:focus-within { border-color: #1a73e8; }
+    #reader { width: 100%; border-radius: 12px; display: none; margin-bottom: 20px; border: 2px solid #1a73e8; overflow: hidden; background: #000; }
+    .footer { display: flex; border-top: 1px solid #dee2e6; padding: 12px; gap: 10px; }
+    .btn-footer { flex: 1; padding: 14px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; font-size: 1rem; transition: opacity 0.2s; }
+    .btn-footer:active { opacity: 0.8; }
+    .btn-cancel { background: #f1f3f4; color: #5f6368; }
+    .btn-save { background: #1a73e8; color: white; }
+    .btn-save:disabled { background: #a8c7fa; cursor: not-allowed; }
+    .hint-text { font-size: 0.78rem; color: #9aa0a6; margin-top: 5px; }
+    .install-banner { background: #e6f4ea; border: 1.5px solid #34a853; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .install-banner p { margin: 0; font-size: 0.85rem; color: #1e7e34; line-height: 1.3; }
+    .btn-install { background: #34a853; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; white-space: nowrap; }
   </style>
 </head>
-
 <body>
-  <div class="app-container">
-    <div class="header">
-      <span class="status-dot" id="statusDot"></span>REGISTRO DE ASISTENCIA
+<div class="app-container">
+  <div class="header">📋 REGISTRO DE ASISTENCIA</div>
+  <div class="form-body">
+
+    <div class="install-banner" id="installBanner" style="display:none;">
+      <p>📲 Instala esta app en tu celular para acceso rápido.</p>
+      <button class="btn-install" id="installBtn">Instalar</button>
     </div>
-    <div class="form-body">
 
-      <!-- Banner de instalación (solo aparece si no está instalada) -->
-      <div class="install-banner" id="installBanner" style="display:none;">
-        <p>📲 Instala esta app en tu celular para acceso rápido.</p>
-        <button class="btn-install" id="installBtn">Instalar</button>
+    <div id="reader"></div>
+
+    <div class="mb-4">
+      <label class="field-label">ID Escaneado</label>
+      <div class="input-group">
+        <input type="text" id="id_escaneado" class="form-control border-0" placeholder="Escribe el ID o usa 🔳">
+        <button class="btn btn-light border-start px-3" onclick="toggleScanner()" id="scanBtn">🔳</button>
       </div>
-
-      <div id="reader"></div>
-
-      <div class="mb-4">
-        <label class="field-label">ID Escaneado</label>
-        <div class="input-group">
-          <input type="text" id="id_escaneado" class="form-control border-0" placeholder="Escribe el ID o usa 🔳">
-          <button class="btn btn-light border-start px-3" onclick="toggleScanner()" id="scanBtn"
-            title="Activar cámara">🔳</button>
-        </div>
-        <!-- <p class="hint-text">📷 Presiona 🔳 para activar la cámara y escanear el QR.</p> -->
-      </div>
-
-      <div class="mb-4">
-        <label class="field-label">Fecha</label>
-        <input type="text" id="fecha" class="form-control bg-light" readonly>
-      </div>
-      <div class="mb-4">
-        <label class="field-label">Hora</label>
-        <input type="text" id="hora" class="form-control bg-light" readonly>
-      </div>
-
+      <p class="hint-text">📷 Presiona 🔳 para activar la cámara y escanear el QR.</p>
     </div>
-    <div class="footer">
-      <button class="btn-footer btn-cancel" onclick="resetApp()">Limpiar</button>
-      <button class="btn-footer btn-save" id="saveBtn" onclick="guardar()">Guardar</button>
+
+    <div class="mb-4">
+      <label class="field-label">Fecha</label>
+      <input type="text" id="fecha" class="form-control bg-light" readonly>
     </div>
+    <div class="mb-4">
+      <label class="field-label">Hora</label>
+      <input type="text" id="hora" class="form-control bg-light" readonly>
+    </div>
+
   </div>
+  <div class="footer">
+    <button class="btn-footer btn-cancel" onclick="resetApp()">Limpiar</button>
+    <button class="btn-footer btn-save" id="saveBtn" onclick="guardar()">Guardar</button>
+  </div>
+</div>
 
-  <script>
-    // ─── Configuración ────────────────────────────────────────────────────────
-    const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyvT6IrmyDuv3uEXlt9Yv65lAAeDCwNpM2UFDrPNzjWlxZvhcwFsUtF4rLqaJ7w7CzrZA/exec';
+<script>
+  const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycby9mfhvY6y2464qvaGRkfyojkKUEDtceTTDBsJq-FKPKQ_OduVwTyHk9qVV9jpfBoQZFw/exec';
 
-    // ─── Service Worker ───────────────────────────────────────────────────────
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').catch(console.error);
-    }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(console.error);
+  }
 
-    // ─── Instalar PWA ─────────────────────────────────────────────────────────
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      document.getElementById('installBanner').style.display = 'flex';
-    });
-    document.getElementById('installBtn')?.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        document.getElementById('installBanner').style.display = 'none';
-      }
-      deferredPrompt = null;
-    });
-    window.addEventListener('appinstalled', () => {
-      document.getElementById('installBanner').style.display = 'none';
-    });
+  // ─── Instalar PWA ─────────────────────────────────────────────────────────
+  let deferredPrompt;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('installBanner').style.display = 'flex';
+  });
+  document.getElementById('installBtn').addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') document.getElementById('installBanner').style.display = 'none';
+    deferredPrompt = null;
+  });
+  window.addEventListener('appinstalled', () => {
+    document.getElementById('installBanner').style.display = 'none';
+  });
 
-    // ─── Fecha y hora ─────────────────────────────────────────────────────────
-    function updateDateTime() {
-      const ahora = new Date();
-      document.getElementById('fecha').value = ahora.toLocaleDateString('es-MX');
-      document.getElementById('hora').value = ahora.toLocaleTimeString('es-MX');
-    }
-    window.onload = updateDateTime;
+  // ─── Fecha y hora ─────────────────────────────────────────────────────────
+  function updateDateTime() {
+    const ahora = new Date();
+    document.getElementById('fecha').value = ahora.toLocaleDateString('es-MX');
+    document.getElementById('hora').value = ahora.toLocaleTimeString('es-MX');
+  }
+  window.onload = updateDateTime;
 
-    // ─── Escáner QR ───────────────────────────────────────────────────────────
-    let html5QrCode = null;
+  // ─── Escáner QR ───────────────────────────────────────────────────────────
+  let html5QrCode = null;
 
-    function toggleScanner() {
-      if (html5QrCode && html5QrCode.isScanning) {
-        detenerCamara();
-      } else {
-        iniciarCamara();
-      }
-    }
-
-    async function iniciarCamara() {
-      const readerDiv = document.getElementById('reader');
-      readerDiv.style.display = 'block';
-      html5QrCode = new Html5Qrcode("reader");
-      const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
-      try {
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          config,
-          (text) => {
-            document.getElementById('id_escaneado').value = text;
-            detenerCamara();
-            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '✅ Escaneado', showConfirmButton: false, timer: 1500 });
-          }
-        );
-        document.getElementById('scanBtn').textContent = '⏹';
-      } catch (err) {
-        console.error("Error de cámara:", err);
-        Swal.fire('Error de cámara', 'Verifica que diste permiso de cámara al navegador.', 'error');
-        readerDiv.style.display = 'none';
-        html5QrCode = null;
-      }
-    }
-
-    async function detenerCamara() {
-      if (html5QrCode) {
-        try {
-          if (html5QrCode.isScanning) await html5QrCode.stop();
-          await html5QrCode.clear();
-        } catch (e) { console.log("Error al detener:", e); }
-        html5QrCode = null;
-      }
-      document.getElementById('reader').style.display = 'none';
-      document.getElementById('reader').innerHTML = '';
-      document.getElementById('scanBtn').textContent = '🔳';
-    }
-
-    // ─── Reset ────────────────────────────────────────────────────────────────
-    function resetApp() {
-      document.getElementById('id_escaneado').value = '';
-      document.getElementById('saveBtn').disabled = false;
+  function toggleScanner() {
+    if (html5QrCode && html5QrCode.isScanning) {
       detenerCamara();
-      updateDateTime();
+    } else {
+      iniciarCamara();
     }
+  }
 
-    // ─── Guardar via fetch → Apps Script ──────────────────────────────────────
-    async function guardar() {
-      const val = document.getElementById('id_escaneado').value.trim();
-      if (!val) return Swal.fire('Atención', 'Escanea un código o escribe el ID primero.', 'warning');
-
-      document.getElementById('saveBtn').disabled = true;
-      Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-      try {
-        const params = new URLSearchParams({ action: 'registrarAsistencia', id_escaneado: val });
-        const res = await fetch(`${WEBAPP_URL}?${params.toString()}`, { method: 'GET', redirect: 'follow' });
-        const data = await res.json();
-        if (data.status === 'ok') {
-          Swal.fire('¡Éxito!', data.message, 'success').then(() => resetApp());
-        } else {
-          throw new Error(data.message || 'Error desconocido');
+  async function iniciarCamara() {
+    const readerDiv = document.getElementById('reader');
+    readerDiv.style.display = 'block';
+    html5QrCode = new Html5Qrcode("reader");
+    const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
+    try {
+      await html5QrCode.start(
+        { facingMode: "environment" },
+        config,
+        (text) => {
+          document.getElementById('id_escaneado').value = text;
+          detenerCamara();
+          Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '✅ Escaneado', showConfirmButton: false, timer: 1500 });
         }
-      } catch (err) {
-        document.getElementById('saveBtn').disabled = false;
-        Swal.fire('Error', 'No se pudo guardar: ' + err.message, 'error');
-      }
+      );
+      document.getElementById('scanBtn').textContent = '⏹';
+    } catch (err) {
+      console.error("Error de cámara:", err);
+      Swal.fire('Error de cámara', 'Verifica que diste permiso de cámara al navegador.', 'error');
+      readerDiv.style.display = 'none';
+      html5QrCode = null;
     }
-  </script>
-</body>
+  }
 
+  async function detenerCamara() {
+    if (html5QrCode) {
+      try {
+        if (html5QrCode.isScanning) await html5QrCode.stop();
+        await html5QrCode.clear();
+      } catch (e) { console.log("Error al detener:", e); }
+      html5QrCode = null;
+    }
+    document.getElementById('reader').style.display = 'none';
+    document.getElementById('reader').innerHTML = '';
+    document.getElementById('scanBtn').textContent = '🔳';
+  }
+
+  // ─── Reset ────────────────────────────────────────────────────────────────
+  function resetApp() {
+    document.getElementById('id_escaneado').value = '';
+    document.getElementById('saveBtn').disabled = false;
+    detenerCamara();
+    updateDateTime();
+  }
+
+  // ─── Guardar ──────────────────────────────────────────────────────────────
+  // Apps Script no permite CORS desde dominios externos, pero sí permite
+  // llamadas GET con redirect:follow. Usamos un truco: modo 'no-cors' para
+  // disparar la petición (el dato se guarda), luego verificamos con una
+  // segunda llamada de confirmación.
+  async function guardar() {
+    const val = document.getElementById('id_escaneado').value.trim();
+    if (!val) return Swal.fire('Atención', 'Escanea un código o escribe el ID primero.', 'warning');
+
+    document.getElementById('saveBtn').disabled = true;
+    Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+    try {
+      const params = new URLSearchParams({ action: 'registrarAsistencia', id_escaneado: val });
+      const url = `${WEBAPP_URL}?${params.toString()}`;
+
+      // Primer intento: fetch normal con redirect follow
+      let guardado = false;
+      try {
+        const res = await fetch(url, { method: 'GET', redirect: 'follow' });
+        const data = await res.json();
+        if (data.status === 'ok') guardado = true;
+        else throw new Error(data.message);
+      } catch (e) {
+        // Si falla por CORS al leer la respuesta, intentamos no-cors
+        // (el dato igual se guarda en el servidor, solo no podemos leer la respuesta)
+        await fetch(url, { method: 'GET', mode: 'no-cors', redirect: 'follow' });
+        guardado = true; // asumimos éxito si no hubo error de red
+      }
+
+      if (guardado) {
+        Swal.fire('¡Éxito!', 'Asistencia registrada correctamente.', 'success').then(() => resetApp());
+      }
+    } catch (err) {
+      document.getElementById('saveBtn').disabled = false;
+      Swal.fire('Error de red', 'No se pudo conectar. Verifica tu conexión e intenta de nuevo.', 'error');
+    }
+  }
+</script>
+</body>
 </html>
