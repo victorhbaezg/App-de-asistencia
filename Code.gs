@@ -3,24 +3,47 @@ function doGet(e) {
 
   if (action === 'registrarAsistencia') {
     try {
-      const id_escaneado = e.parameter.id_escaneado || '';
-      if (!id_escaneado) throw new Error('ID escaneado vacío.');
+      const id_escaneado = validarIdEscaneado(e.parameter.id_escaneado);
       const mensaje = registrarAsistencia({ id_escaneado: id_escaneado });
-      return ContentService
-        .createTextOutput(JSON.stringify({ status: 'ok', message: mensaje }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return makeJSON({ status: 'ok', message: mensaje });
     } catch (err) {
-      return ContentService
-        .createTextOutput(JSON.stringify({ status: 'error', message: err.message }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return makeJSON({ status: 'error', message: err.message });
     }
   }
 
-  // Sin parámetros → sirve el HTML (por si alguien entra directo a la URL /exec)
+  // Sin parametros: sirve el HTML si existe un archivo llamado Index.
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('Registro de Asistencia')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function doPost(e) {
+  try {
+    const body = JSON.parse(e.postData.contents);
+    const id_escaneado = validarIdEscaneado(body.id_escaneado);
+    const mensaje = registrarAsistencia({ id_escaneado: id_escaneado });
+    return makeJSON({ status: 'ok', message: mensaje });
+  } catch (err) {
+    return makeJSON({ status: 'error', message: err.message });
+  }
+}
+
+function makeJSON(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function validarIdEscaneado(valor) {
+  const id = String(valor || '').trim().replace(/\s+/g, '').toUpperCase();
+
+  if (!id) throw new Error('ID escaneado vacio.');
+  if (id === '{ID}' || /[{}]/.test(id)) throw new Error('El QR contiene una plantilla, no un ID real.');
+  if (id.length < 2) throw new Error('ID escaneado demasiado corto.');
+  if (id.length > 80) throw new Error('ID escaneado demasiado largo.');
+
+  return id;
 }
 
 function registrarAsistencia(datos) {
@@ -34,11 +57,20 @@ function registrarAsistencia(datos) {
   }
 
   const ahora = new Date();
-  const idRegistro = "REG-" + ahora.getTime();
-  const fecha = Utilities.formatDate(ahora, "America/Mexico_City", "dd/MM/yyyy");
-  const hora  = Utilities.formatDate(ahora, "America/Mexico_City", "HH:mm:ss");
-  const usuario = Session.getActiveUser().getEmail() || "Anónimo";
+  const idRegistro = 'REG-' + ahora.getTime();
+  const fecha = Utilities.formatDate(ahora, 'America/Mexico_City', 'dd/MM/yyyy');
+  const hora = Utilities.formatDate(ahora, 'America/Mexico_City', 'HH:mm:ss');
+  const usuario = Session.getActiveUser().getEmail() || 'Anonimo';
 
-  hoja.appendRow([idRegistro, datos.id_escaneado, fecha, hora, usuario]);
-  return "Asistencia registrada correctamente.";
+  // Evita conflictos si varios celulares registran asistencia al mismo tiempo.
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+
+  try {
+    hoja.appendRow([idRegistro, datos.id_escaneado, fecha, hora, usuario]);
+  } finally {
+    lock.releaseLock();
+  }
+
+  return 'Asistencia registrada correctamente.';
 }

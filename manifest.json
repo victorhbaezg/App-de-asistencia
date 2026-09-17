@@ -1,11 +1,11 @@
 {
   "name": "Registro de Asistencia",
   "short_name": "Asistencia",
-  "description": "Registra asistencia escaneando códigos QR",
+  "description": "Registra asistencia escaneando codigos QR",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#1a73e8",
+  "theme_color": "#14254a",
   "orientation": "portrait",
   "icons": [
     {
