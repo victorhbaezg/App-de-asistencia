@@ -383,13 +383,19 @@
 
   <script>
     const WEBAPP_URL = 'https://script.google.com/a/macros/naciones.org.mx/s/AKfycbwK3UPhNEuexvO1nRk2nBIZmVqzaDRfaPQLbiLVyp1uuoWVYqrfvtOcV8fjEeZDhpZ5/exec';
-    const APP_VERSION = '2026.09.17.2';
+    const APP_VERSION = '2026.09.25.1';
     const INVALID_TEMPLATE_RE = /^\{[^}]*\}$/;
+
+    // Historial local:
+    // Se conserva en el dispositivo aunque no haya internet.
+    const HISTORY_KEY = 'asistencia_historial_v1';
+    const MAX_HISTORY = 5000;
 
     let audioCtx = null;
     let deferredPrompt = null;
     let html5QrCode = null;
     let scannerStarting = false;
+    let syncInProgress = false;
 
     function getAudioCtx() {
       if (!audioCtx) {
@@ -435,9 +441,9 @@
     }
 
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register(`sw.js?v=${APP_VERSION}`).then((registration) => {
-        registration.update().catch(console.error);
-      }).catch(console.error);
+      navigator.serviceWorker.register(`sw.js?v=${APP_VERSION}`)
+        .then((registration) => registration.update().catch(console.error))
+        .catch(console.error);
     }
 
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -450,7 +456,9 @@
       if (!deferredPrompt) return;
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') document.getElementById('installBanner').style.display = 'none';
+      if (outcome === 'accepted') {
+        document.getElementById('installBanner').style.display = 'none';
+      }
       deferredPrompt = null;
     });
 
@@ -467,11 +475,6 @@
         second: '2-digit'
       });
     }
-
-    window.addEventListener('load', () => {
-      updateDateTime();
-      setInterval(updateDateTime, 1000);
-    });
 
     function normalizeId(value) {
       return value.trim().replace(/\s+/g, '').toUpperCase();
@@ -495,14 +498,19 @@
     function setScannerUi(active) {
       document.getElementById('scannerPanel').style.display = active ? 'block' : 'none';
       document.getElementById('scanStatus').style.display = active ? 'block' : 'none';
+
       const scanBtn = document.getElementById('scanBtn');
       scanBtn.textContent = active ? '×' : '□';
       scanBtn.classList.toggle('is-active', active);
-      scanBtn.setAttribute('aria-label', active ? 'Detener escaner' : 'Activar escaner');
+      scanBtn.setAttribute(
+        'aria-label',
+        active ? 'Detener escaner' : 'Activar escaner'
+      );
     }
 
     function toggleScanner() {
       if (scannerStarting) return;
+
       if (html5QrCode && html5QrCode.isScanning) {
         detenerCamara();
       } else {
@@ -512,14 +520,21 @@
 
     async function iniciarCamara() {
       if (!window.Html5Qrcode) {
-        Swal.fire('Escaner no disponible', 'No se pudo cargar la libreria del escaner. Verifica tu conexion.', 'error');
+        Swal.fire(
+          'Escaner no disponible',
+          'No se pudo cargar la libreria del escaner. Verifica tu conexion.',
+          'error'
+        );
         return;
       }
 
       scannerStarting = true;
       setScannerUi(true);
+
       html5QrCode = new Html5Qrcode('reader', {
-        formatsToSupport: window.Html5QrcodeSupportedFormats ? [Html5QrcodeSupportedFormats.QR_CODE] : undefined
+        formatsToSupport: window.Html5QrcodeSupportedFormats
+          ? [Html5QrcodeSupportedFormats.QR_CODE]
+          : undefined
       });
 
       const config = {
@@ -546,6 +561,7 @@
             document.getElementById('id_escaneado').value = scannedId;
             detenerCamara();
             playSound('scan');
+
             Swal.fire({
               toast: true,
               position: 'top-end',
@@ -558,7 +574,11 @@
         );
       } catch (err) {
         console.error('Error de camara:', err);
-        Swal.fire('Error de camara', 'Verifica que diste permiso de camara al navegador.', 'error');
+        Swal.fire(
+          'Error de camara',
+          'Verifica que diste permiso de camara al navegador.',
+          'error'
+        );
         html5QrCode = null;
         setScannerUi(false);
       } finally {
@@ -576,8 +596,338 @@
         }
         html5QrCode = null;
       }
+
       document.getElementById('reader').innerHTML = '';
       setScannerUi(false);
+    }
+
+    // ------------------------------------------------------------
+    // HISTORIAL LOCAL
+    // ------------------------------------------------------------
+
+    function readHistory() {
+      try {
+        const raw = localStorage.getItem(HISTORY_KEY);
+        if (!raw) return [];
+
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        console.error('No se pudo leer el historial local:', e);
+        return [];
+      }
+    }
+
+    function writeHistory(history) {
+      try {
+        localStorage.setItem(
+          HISTORY_KEY,
+          JSON.stringify(history.slice(-MAX_HISTORY))
+        );
+        return true;
+      } catch (e) {
+        console.error('No se pudo guardar historial:', e);
+        return false;
+      }
+    }
+
+    function makeRecord(id) {
+      const now = new Date();
+
+      return {
+        localId:
+          `${now.getTime()}-${Math.random().toString(36).slice(2, 10)}`,
+        id_escaneado: id,
+        fecha: now.toLocaleDateString('es-MX'),
+        hora: now.toLocaleTimeString('es-MX', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        }),
+        timestamp: now.getTime(),
+        estado: 'pendiente',
+        intentos: 0,
+        ultimoIntento: null
+      };
+    }
+
+    function addRecord(record) {
+      const history = readHistory();
+      history.push(record);
+
+      if (!writeHistory(history)) {
+        throw new Error('No se pudo guardar el registro en el dispositivo.');
+      }
+
+      return record;
+    }
+
+    function updateRecord(localId, changes) {
+      const history = readHistory();
+      const index = history.findIndex(item => item.localId === localId);
+
+      if (index === -1) return null;
+
+      history[index] = {
+        ...history[index],
+        ...changes
+      };
+
+      writeHistory(history);
+      return history[index];
+    }
+
+    function getTodayRecords() {
+      const today = new Date().toLocaleDateString('es-MX');
+      return readHistory().filter(item => item.fecha === today);
+    }
+
+    function getPendingRecords() {
+      return readHistory().filter(item => item.estado !== 'enviado');
+    }
+
+    function getHistoryStats() {
+      const records = getTodayRecords();
+
+      return {
+        total: records.length,
+        sent: records.filter(r => r.estado === 'enviado').length,
+        pending: records.filter(r => r.estado !== 'enviado').length
+      };
+    }
+
+    // ------------------------------------------------------------
+    // ENVIO AL SERVIDOR
+    // ------------------------------------------------------------
+
+    async function sendRecord(record) {
+      const params = new URLSearchParams({
+        action: 'registrarAsistencia',
+        id_escaneado: record.id_escaneado,
+
+        // Estos dos parámetros permiten que el backend conserve
+        // los mismos datos enviados originalmente y, si el backend
+        // decide usarlos, también la fecha/hora generadas por el móvil.
+        fecha: record.fecha,
+        hora: record.hora,
+
+        // Identificador único para que el backend pueda evitar
+        // duplicados si posteriormente implementas esa validación.
+        local_id: record.localId
+      });
+
+      const url = `${WEBAPP_URL}?${params.toString()}`;
+
+      // Conservamos no-cors porque el Web App actual puede depender
+      // de esa configuración. El historial local funciona aunque
+      // no podamos leer el cuerpo de la respuesta.
+      await fetch(url, {
+        method: 'GET',
+        mode: 'no-cors',
+        cache: 'no-store',
+        keepalive: true
+      });
+
+      return true;
+    }
+
+    async function syncPendingRecords() {
+      if (syncInProgress) return;
+
+      const pending = getPendingRecords();
+      if (!pending.length) return;
+
+      syncInProgress = true;
+
+      try {
+        for (const record of pending) {
+          const updated = updateRecord(record.localId, {
+            intentos: (record.intentos || 0) + 1,
+            ultimoIntento: Date.now()
+          });
+
+          try {
+            await sendRecord(updated || record);
+
+            updateRecord(record.localId, {
+              estado: 'enviado',
+              ultimoIntento: Date.now()
+            });
+          } catch (error) {
+            console.error('Error sincronizando registro:', record, error);
+
+            updateRecord(record.localId, {
+              estado: 'error',
+              ultimoIntento: Date.now()
+            });
+          }
+        }
+      } finally {
+        syncInProgress = false;
+      }
+    }
+
+    // Intenta sincronizar cuando vuelve la conexión.
+    window.addEventListener('online', () => {
+      syncPendingRecords();
+    });
+
+    // También intenta periódicamente mientras la página está abierta.
+    setInterval(() => {
+      if (navigator.onLine) syncPendingRecords();
+    }, 30000);
+
+    // ------------------------------------------------------------
+    // HISTORIAL / COMPARTIR
+    // ------------------------------------------------------------
+
+    function formatHistoryText(records) {
+      if (!records.length) {
+        return 'CONTROL DE ASISTENCIA\n\nNo hay registros.';
+      }
+
+      const stats = {
+        total: records.length,
+        sent: records.filter(r => r.estado === 'enviado').length,
+        pending: records.filter(r => r.estado !== 'enviado').length
+      };
+
+      const fecha = records[0]?.fecha || new Date().toLocaleDateString('es-MX');
+
+      const lines = [
+        'CONTROL DE ASISTENCIA',
+        `Fecha: ${fecha}`,
+        '',
+        `Total: ${stats.total}`,
+        `Enviados: ${stats.sent}`,
+        `Pendientes: ${stats.pending}`,
+        '',
+        'REGISTROS:',
+        ''
+      ];
+
+      records.forEach(record => {
+        const estado = record.estado === 'enviado' ? '✓' : '⚠';
+        lines.push(`${estado} ${record.hora} - ${record.id_escaneado}`);
+      });
+
+      return lines.join('\n');
+    }
+
+    async function compartirHistorial() {
+      const records = getTodayRecords();
+
+      if (!records.length) {
+        return Swal.fire(
+          'Sin registros',
+          'Todavia no hay asistencias guardadas hoy.',
+          'info'
+        );
+      }
+
+      const text = formatHistoryText(records);
+
+      // WhatsApp permite abrir una conversacion con el mensaje ya preparado.
+      const whatsappUrl =
+        `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+      window.open(whatsappUrl, '_blank');
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function mostrarHistorial() {
+      const records = getTodayRecords();
+
+      if (!records.length) {
+        return Swal.fire(
+          'Historial de hoy',
+          'Todavia no hay registros guardados.',
+          'info'
+        );
+      }
+
+      const stats = getHistoryStats();
+
+      const rows = records
+        .slice()
+        .reverse()
+        .map(record => {
+          const status =
+            record.estado === 'enviado'
+              ? '<span style="color:#087443;font-weight:700;">✓ Enviado</span>'
+              : '<span style="color:#b54708;font-weight:700;">⚠ Pendiente</span>';
+
+          return `
+            <tr>
+              <td style="padding:7px 4px;">${escapeHtml(record.hora)}</td>
+              <td style="padding:7px 4px;font-weight:600;">${escapeHtml(record.id_escaneado)}</td>
+              <td style="padding:7px 4px;">${status}</td>
+            </tr>
+          `;
+        })
+        .join('');
+
+      Swal.fire({
+        title: 'Historial de hoy',
+        width: 650,
+        html: `
+          <div style="text-align:left;">
+            <div style="
+              display:grid;
+              grid-template-columns:repeat(3,1fr);
+              gap:7px;
+              margin-bottom:14px;
+            ">
+              <div style="padding:10px;border-radius:10px;background:#f6f7fa;">
+                <strong style="display:block;font-size:20px;">${stats.total}</strong>
+                <small>Total</small>
+              </div>
+              <div style="padding:10px;border-radius:10px;background:#eef9f3;">
+                <strong style="display:block;font-size:20px;color:#087443;">${stats.sent}</strong>
+                <small>Enviados</small>
+              </div>
+              <div style="padding:10px;border-radius:10px;background:#fff6ed;">
+                <strong style="display:block;font-size:20px;color:#b54708;">${stats.pending}</strong>
+                <small>Pendientes</small>
+              </div>
+            </div>
+
+            <div style="max-height:330px;overflow:auto;">
+              <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead>
+                  <tr style="border-bottom:1px solid #d9deea;">
+                    <th style="text-align:left;padding:7px 4px;">Hora</th>
+                    <th style="text-align:left;padding:7px 4px;">ID</th>
+                    <th style="text-align:left;padding:7px 4px;">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>
+          </div>
+        `,
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: 'WhatsApp',
+        denyButtonText: 'Reintentar',
+        cancelButtonText: 'Cerrar'
+      }).then(result => {
+        if (result.isConfirmed) {
+          compartirHistorial();
+        } else if (result.isDenied) {
+          syncPendingRecords().then(() => {
+            mostrarHistorial();
+          });
+        }
+      });
     }
 
     function resetApp() {
@@ -586,6 +936,10 @@
       detenerCamara();
       updateDateTime();
     }
+
+    // ------------------------------------------------------------
+    // GUARDAR
+    // ------------------------------------------------------------
 
     async function guardar() {
       const input = document.getElementById('id_escaneado');
@@ -601,33 +955,129 @@
       }
 
       saveBtn.disabled = true;
-      Swal.fire({
-        title: 'Guardando...',
-        text: 'Registrando asistencia',
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading()
-      });
+
+      let record;
 
       try {
-        const params = new URLSearchParams({ action: 'registrarAsistencia', id_escaneado: val });
-        const url = `${WEBAPP_URL}?${params.toString()}`;
-
-        await fetch(url, {
-          method: 'GET',
-          mode: 'no-cors',
-          cache: 'no-store',
-          keepalive: true
-        });
+        // PRIMERO se guarda localmente.
+        // De esta forma el registro existe aunque falle internet.
+        record = addRecord(makeRecord(val));
 
         playSound('success');
-        Swal.fire('Listo', 'Asistencia registrada correctamente.', 'success').then(() => resetApp());
-      } catch (err) {
-        console.error('Error al guardar:', err);
+
+        // Intentamos enviar inmediatamente.
+        try {
+          await sendRecord(record);
+
+          updateRecord(record.localId, {
+            estado: 'enviado',
+            ultimoIntento: Date.now(),
+            intentos: 1
+          });
+
+          Swal.fire({
+            title: 'Listo',
+            text: 'Asistencia registrada correctamente.',
+            icon: 'success',
+            timer: 1500,
+            showConfirmButton: false
+          }).then(() => resetApp());
+        } catch (error) {
+          console.error('No se pudo enviar. Queda pendiente:', error);
+
+          updateRecord(record.localId, {
+            estado: 'pendiente',
+            ultimoIntento: Date.now(),
+            intentos: 1
+          });
+
+          Swal.fire({
+            title: 'Guardado en el dispositivo',
+            html: `
+              <p>No se pudo enviar al servidor en este momento.</p>
+              <p><strong>El registro no se perdio.</strong></p>
+              <p>Quedara pendiente y se intentara enviar automaticamente cuando haya conexion.</p>
+            `,
+            icon: 'warning'
+          }).then(() => resetApp());
+        }
+      } catch (error) {
+        console.error('Error guardando localmente:', error);
+
         saveBtn.disabled = false;
         playSound('error');
-        Swal.fire('Error de red', 'No se pudo conectar. Verifica tu conexion e intenta de nuevo.', 'error');
+
+        Swal.fire(
+          'Error',
+          'No se pudo guardar el registro en este dispositivo. No cierres la pagina e intenta nuevamente.',
+          'error'
+        );
       }
     }
+
+    // ------------------------------------------------------------
+    // UI: botones adicionales de historial
+    // ------------------------------------------------------------
+
+    function addHistoryControls() {
+      const footer = document.querySelector('.footer');
+
+      if (!footer || document.getElementById('historyBtn')) return;
+
+      footer.style.gridTemplateColumns = '1fr 1fr';
+      footer.style.gridTemplateRows = 'auto auto';
+
+      const historyBtn = document.createElement('button');
+      historyBtn.id = 'historyBtn';
+      historyBtn.type = 'button';
+      historyBtn.className = 'btn-footer';
+      historyBtn.textContent = 'Historial';
+      historyBtn.style.gridColumn = '1 / -1';
+      historyBtn.style.background = '#e7ecf7';
+      historyBtn.style.color = '#14254a';
+      historyBtn.onclick = mostrarHistorial;
+
+      footer.insertBefore(historyBtn, footer.firstChild);
+
+      const whatsappBtn = document.createElement('button');
+      whatsappBtn.id = 'whatsappBtn';
+      whatsappBtn.type = 'button';
+      whatsappBtn.className = 'btn-footer';
+      whatsappBtn.textContent = 'WhatsApp';
+      whatsappBtn.style.gridColumn = '1 / -1';
+      whatsappBtn.style.background = '#e7f7ee';
+      whatsappBtn.style.color = '#087443';
+      whatsappBtn.onclick = compartirHistorial;
+
+      footer.insertBefore(whatsappBtn, historyBtn.nextSibling);
+
+      const pending = getPendingRecords();
+
+      if (pending.length) {
+        historyBtn.textContent = `Historial (${pending.length} pendientes)`;
+      }
+    }
+
+    window.addEventListener('load', () => {
+      updateDateTime();
+      setInterval(updateDateTime, 1000);
+      addHistoryControls();
+
+      // Intento inicial de sincronización.
+      if (navigator.onLine) {
+        setTimeout(syncPendingRecords, 1200);
+      }
+
+      // Actualiza el contador de pendientes periódicamente.
+      setInterval(() => {
+        const btn = document.getElementById('historyBtn');
+        if (!btn) return;
+
+        const pending = getPendingRecords();
+        btn.textContent = pending.length
+          ? `Historial (${pending.length} pendientes)`
+          : 'Historial';
+      }, 5000);
+    });
   </script>
 </body>
-</html>
